@@ -137,7 +137,7 @@ const DailyLog: React.FC = () => {
                                     <span className="text-[10px] font-black uppercase tracking-widest">{isExotic ? 'Gradient' : 'Weight'}</span>
                                 </div>
                                 <div className="mt-1 font-black text-xs">
-                                    {isExotic ? (logs.temp ? `${logs.temp.basking_temp_c}°/${logs.temp.cool_temp_c}°` : '--') : (logs.weight ? formatWeightDisplay(logs.weight.weight_grams, animal.weight_unit) : '--')}
+                                    {isExotic ? (logs.temp ? `${logs.temp.basking_temp_c}°/${logs.temp.cool_temp_c}°` : '--') : (logs.weight && logs.weight.weight_grams !== undefined ? formatWeightDisplay(logs.weight.weight_grams, animal.weight_unit) : '--')}
                                 </div>
                             </button>
 
