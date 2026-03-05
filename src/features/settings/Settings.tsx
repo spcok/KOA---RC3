@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { User, Palette, Building } from 'lucide-react';
+import { User, Palette, Building, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppData } from '../../context/Context';
+import AccessControl from './tabs/AccessControl';
 
 const Settings: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { orgProfile } = useAppData();
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'organization'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'organization' | 'access'>('profile');
 
   // UI State for placeholders
   const [highContrast, setHighContrast] = useState(false);
@@ -23,10 +24,11 @@ const Settings: React.FC = () => {
           { id: 'profile', label: 'User Profile', icon: User },
           { id: 'preferences', label: 'App Preferences', icon: Palette },
           { id: 'organization', label: 'Organization', icon: Building },
+          { id: 'access', label: 'Access Control', icon: ShieldCheck },
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as 'profile' | 'preferences' | 'organization')}
+            onClick={() => setActiveTab(tab.id as 'profile' | 'preferences' | 'organization' | 'access')}
             className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
               activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
@@ -103,6 +105,8 @@ const Settings: React.FC = () => {
             <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Save Organization</button>
           </div>
         )}
+
+        {activeTab === 'access' && <AccessControl />}
       </div>
     </div>
   );
