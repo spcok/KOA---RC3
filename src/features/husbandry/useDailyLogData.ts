@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AnimalCategory, LogType, LogEntry } from '../../types';
 import { db } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { mutateOnlineFirst } from '../../lib/syncEngine';
 
 export const useDailyLogData = (viewDate: string, activeCategory: AnimalCategory) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +36,8 @@ export const useDailyLogData = (viewDate: string, activeCategory: AnimalCategory
   };
 
   const handleQuickCheck = async (animalId: string, type: LogType) => {
-    const newLog: Omit<LogEntry, 'id'> = {
+    const newLog: LogEntry = {
+      id: crypto.randomUUID(),
       animal_id: animalId,
       log_type: type,
       log_date: viewDate,
@@ -43,24 +45,26 @@ export const useDailyLogData = (viewDate: string, activeCategory: AnimalCategory
       created_at: new Date().toISOString(),
       created_by: 'System',
     };
-    await db.daily_logs.add(newLog as LogEntry);
+    await mutateOnlineFirst('daily_logs', newLog as unknown as Record<string, unknown>);
   };
 
   const addLogEntry = async (entry: Partial<LogEntry>) => {
-    if (entry.id) {
-      const { id, ...updates } = entry;
-      await db.daily_logs.update(id, updates);
-    } else {
-      const newLog: Omit<LogEntry, 'id'> = {
-        animal_id: entry.animal_id || '',
-        log_type: entry.log_type || LogType.WEIGHT,
-        log_date: entry.log_date || viewDate,
-        ...entry,
-        created_at: new Date().toISOString(),
-        created_by: 'System',
-      } as LogEntry;
-      await db.daily_logs.add(newLog as LogEntry);
-    }
+    const logEntry: LogEntry = {
+      id: entry.id || crypto.randomUUID(),
+      animal_id: entry.animal_id || '',
+      log_type: entry.log_type || LogType.WEIGHT,
+      log_date: entry.log_date || viewDate,
+      value: entry.value || '',
+      notes: entry.notes,
+      weight_grams: entry.weight_grams,
+      basking_temp_c: entry.basking_temp_c,
+      cool_temp_c: entry.cool_temp_c,
+      temperature_c: entry.temperature_c,
+      health_record_type: entry.health_record_type,
+      created_at: entry.created_at || new Date().toISOString(),
+      created_by: entry.created_by || 'System',
+    };
+    await mutateOnlineFirst('daily_logs', logEntry as unknown as Record<string, unknown>);
   };
 
   return {

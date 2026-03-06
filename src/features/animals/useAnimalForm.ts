@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '../../lib/storageEngine';
 import { Animal, AnimalCategory, HazardRating, ConservationStatus } from '../../types';
 import { getLatinName, getConservationStatus } from '../../services/geminiService';
-import { db } from '../../lib/db';
+import { mutateOnlineFirst } from '../../lib/syncEngine';
 
 export const animalFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -146,11 +146,7 @@ export function useAnimalForm({ initialData, onClose }: UseAnimalFormProps) {
         weight_unit: initialData?.weight_unit || 'g',
       } as Animal;
 
-      if (initialData?.id) {
-        await db.animals.put(animalData);
-      } else {
-        await db.animals.add(animalData);
-      }
+      await mutateOnlineFirst('animals', animalData as unknown as Record<string, unknown>);
       
       onClose();
     } catch (error) {

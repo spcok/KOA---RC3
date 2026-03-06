@@ -29,11 +29,9 @@ export const useRoleSettings = () => {
   const roles = useLiveQuery(() => db.role_permissions.toArray(), []);
 
   useEffect(() => {
-    if (roles) {
-      const existingRoles = roles.map(r => r.role);
-      const missingRoles = Object.values(UserRole).filter(role => !existingRoles.includes(role));
-
-      missingRoles.forEach(role => {
+    if (roles && roles.length === 0) {
+      const allRoles = Object.values(UserRole);
+      allRoles.forEach(role => {
         const newRoleConfig: RolePermissionConfig = {
           role,
           ...defaultPermissions,

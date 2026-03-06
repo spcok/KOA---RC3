@@ -2,6 +2,15 @@ import { db, AppDatabase } from './db';
 import { supabase } from './supabase';
 import { Animal, User, LogEntry, ClinicalNote } from '../types';
 
+const TIMEOUT_MS = 5000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout')), ms)
+  );
+  return Promise.race([promise, timeout]);
+}
+
 export async function pull15DayCache() {
   const fifteenDaysAgo = new Date();
   fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
@@ -54,31 +63,34 @@ export async function processSyncQueue() {
 
 export async function mutateOnlineFirst(tableName: keyof AppDatabase, payload: Record<string, unknown>, operation: 'upsert' | 'delete' = 'upsert') {
   const table = db[tableName] as import('dexie').Table<unknown, string>;
+  
   try {
-    // Try online
+    // 1. Try Cloud with timeout
     if (operation === 'upsert') {
-      await supabase.from(tableName).upsert(payload).throwOnError();
+      await withTimeout(supabase.from(tableName).upsert(payload).throwOnError(), TIMEOUT_MS);
       // Update local cache
       await table.put(payload);
     } else {
-      await supabase.from(tableName).delete().eq('id', payload.id as string).throwOnError();
+      await withTimeout(supabase.from(tableName).delete().eq('id', payload.id as string).throwOnError(), TIMEOUT_MS);
       // Update local cache
       await table.delete(payload.id as string);
     }
   } catch (error) {
-    console.warn('Offline mode: queuing mutation', error);
-    // Queue for later
+    console.warn('⚠️ Server unreachable. Falling back to offline failover.', error);
+    
+    // 2. Fallback: Write to local Dexie
+    if (operation === 'upsert') {
+      await table.put(payload);
+    } else {
+      await table.delete(payload.id as string);
+    }
+    
+    // 3. Queue for retry
     await db.sync_queue.add({
       table_name: tableName,
       operation,
       payload,
       created_at: new Date().toISOString()
     });
-    // Update local cache anyway
-    if (operation === 'upsert') {
-      await table.put(payload);
-    } else {
-      await table.delete(payload.id as string);
-    }
   }
 }

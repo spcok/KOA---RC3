@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ClinicalNote, MARChart, QuarantineRecord, Animal } from '../../types';
 import { db } from '../../lib/db';
+import { mutateOnlineFirst } from '../../lib/syncEngine';
 
 export function useMedicalData() {
   const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>([]);
@@ -41,12 +42,12 @@ export function useMedicalData() {
       id: crypto.randomUUID(),
       animal_name: animal?.name || 'Unknown'
     };
-    await db.medical_logs.add(newNote);
+    await mutateOnlineFirst('medical_logs', newNote as unknown as Record<string, unknown>);
     await loadData(); // Re-fetch
   };
 
   const updateClinicalNote = async (note: ClinicalNote) => {
-    await db.medical_logs.update(note.id, note);
+    await mutateOnlineFirst('medical_logs', note as unknown as Record<string, unknown>);
     await loadData();
   };
 
@@ -59,22 +60,23 @@ export function useMedicalData() {
       administered_dates: [],
       status: 'Active'
     };
-    await db.mar_charts.add(newChart);
+    await mutateOnlineFirst('mar_charts', newChart as unknown as Record<string, unknown>);
     await loadData(); // Re-fetch
   };
 
   const updateMarChart = async (chart: MARChart) => {
-    const { id, ...updates } = chart;
-    await db.mar_charts.update(id, updates);
+    await mutateOnlineFirst('mar_charts', chart as unknown as Record<string, unknown>);
     await loadData();
   };
 
   const signOffDose = async (chartId: string, dateIso: string) => {
     const chart = await db.mar_charts.get(chartId);
     if (chart) {
-      await db.mar_charts.update(chartId, {
+      const updatedChart = {
+        ...chart,
         administered_dates: [...chart.administered_dates, dateIso]
-      });
+      };
+      await mutateOnlineFirst('mar_charts', updatedChart as unknown as Record<string, unknown>);
       await loadData(); // Re-fetch
     }
   };
@@ -87,12 +89,12 @@ export function useMedicalData() {
       animal_name: animal?.name || 'Unknown',
       status: 'Active'
     };
-    await db.quarantine_records.add(newRecord);
+    await mutateOnlineFirst('quarantine_records', newRecord as unknown as Record<string, unknown>);
     await loadData(); // Re-fetch
   };
 
   const updateQuarantineRecord = async (record: QuarantineRecord) => {
-    await db.quarantine_records.update(record.id, record);
+    await mutateOnlineFirst('quarantine_records', record as unknown as Record<string, unknown>);
     await loadData();
   };
 
